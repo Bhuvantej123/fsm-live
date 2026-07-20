@@ -11,6 +11,7 @@ export default function VisitsPage() {
   const [searchParams] = useSearchParams()
   const initialStatus = searchParams.get('status') || ''
 
+  const [showFilters, setShowFilters] = useState(Boolean(initialStatus))
   const [visits,    setVisits]    = useState([])
   const [engineers, setEngineers] = useState([])
   const [customers, setCustomers] = useState([])
@@ -23,11 +24,14 @@ export default function VisitsPage() {
   const nav = useNavigate()
   const { confirm, dialog: confirmDialog } = useConfirm()
 
+  const activeFilterCount = [filters.status, filters.engineer_id, filters.customer_id, filters.start_date, filters.end_date].filter(Boolean).length
+
   // Sync status if search params change
   useEffect(() => {
     const s = searchParams.get('status')
     if (s !== null) {
       setFilters(prev => ({ ...prev, status: s }))
+      if (s) setShowFilters(true)
     }
   }, [searchParams])
 
@@ -71,48 +75,79 @@ export default function VisitsPage() {
         </button>
       </div>
 
-      {/* Filters */}
-      <div className="card" style={{ marginBottom: 20 }}>
-        <div className="filter-bar" style={{ flexWrap: 'wrap' }}>
-          <div className="search-wrap" style={{ flex: '0 1 240px', minWidth: 180 }}>
-            <Search size={15} className="s-icon" />
+      {/* Sleek Compact Control Bar */}
+      <div className="card" style={{ marginBottom: 20, padding: '12px 16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          {/* Small compact search box */}
+          <div className="search-wrap" style={{ width: 200, minWidth: 160 }}>
+            <Search size={14} className="s-icon" />
             <input
               id="visits-search"
               className="form-control"
-              style={{ paddingLeft: 36 }}
-              placeholder="Search problem, customer…"
+              style={{ paddingLeft: 34, fontSize: 13, height: 38 }}
+              placeholder="Search visits…"
               value={filters.search}
               onChange={f('search')}
             />
           </div>
 
-          <select className="form-control" style={{ width: 140 }} value={filters.status} onChange={f('status')}>
-            <option value="">All Status</option>
-            <option value="open">Open</option>
-            <option value="pending">Pending</option>
-            <option value="resolved">Resolved</option>
-          </select>
-
-          <select className="form-control" style={{ width: 170 }} value={filters.engineer_id} onChange={f('engineer_id')}>
-            <option value="">All Engineers</option>
-            {engineers.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
-          </select>
-
-          <select className="form-control" style={{ width: 190 }} value={filters.customer_id} onChange={f('customer_id')}>
-            <option value="">All Customers</option>
-            {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-
-          <input type="date" className="form-control" style={{ width: 148 }} value={filters.start_date} onChange={f('start_date')} />
-          <input type="date" className="form-control" style={{ width: 148 }} value={filters.end_date}   onChange={f('end_date')}   />
-
+          {/* Filter toggle button */}
           <button
-            className="btn btn-ghost btn-sm"
-            onClick={() => setFilters({ status: '', start_date: '', end_date: '', search: '', engineer_id: '', customer_id: '' })}
+            className={`btn ${showFilters || activeFilterCount > 0 ? 'btn-primary' : 'btn-secondary'} btn-sm`}
+            onClick={() => setShowFilters(s => !s)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
           >
-            Clear
+            <Filter size={14} />
+            <span>Filters</span>
+            {activeFilterCount > 0 && (
+              <span style={{
+                background: 'rgba(255,255,255,0.25)', color: '#fff',
+                borderRadius: 99, padding: '1px 7px', fontSize: 10, fontWeight: 700
+              }}>
+                {activeFilterCount}
+              </span>
+            )}
           </button>
         </div>
+
+        {/* Collapsible Filter Drawer */}
+        {showFilters && (
+          <div style={{
+            marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)',
+            display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center',
+            animation: 'fadeIn 0.2s ease'
+          }}>
+            <select className="form-control" style={{ width: 130, height: 36, fontSize: 12.5 }} value={filters.status} onChange={f('status')}>
+              <option value="">All Status</option>
+              <option value="open">Open</option>
+              <option value="pending">Pending</option>
+              <option value="resolved">Resolved</option>
+            </select>
+
+            <select className="form-control" style={{ width: 160, height: 36, fontSize: 12.5 }} value={filters.engineer_id} onChange={f('engineer_id')}>
+              <option value="">All Engineers</option>
+              {engineers.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+            </select>
+
+            <select className="form-control" style={{ width: 170, height: 36, fontSize: 12.5 }} value={filters.customer_id} onChange={f('customer_id')}>
+              <option value="">All Customers</option>
+              {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+
+            <input type="date" className="form-control" style={{ width: 140, height: 36, fontSize: 12.5 }} value={filters.start_date} onChange={f('start_date')} />
+            <input type="date" className="form-control" style={{ width: 140, height: 36, fontSize: 12.5 }} value={filters.end_date}   onChange={f('end_date')}   />
+
+            {activeFilterCount > 0 && (
+              <button
+                className="btn btn-ghost btn-sm"
+                style={{ height: 36, fontSize: 12 }}
+                onClick={() => setFilters(prev => ({ ...prev, status: '', start_date: '', end_date: '', engineer_id: '', customer_id: '' }))}
+              >
+                Clear Filters
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Table & Mobile Cards */}
