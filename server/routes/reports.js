@@ -4,9 +4,23 @@ const PDFDoc  = require('pdfkit');
 const ExcelJS = require('exceljs');
 const db      = require('../db');
 
+// Helper to format any Date or string into clean YYYY-MM-DD
+function formatDate(d) {
+  if (!d) return '—';
+  if (d instanceof Date) {
+    return d.toISOString().slice(0, 10);
+  }
+  const str = String(d);
+  if (str.includes('T')) return str.split('T')[0];
+  const parsed = new Date(d);
+  if (!isNaN(parsed.getTime())) {
+    return parsed.toISOString().slice(0, 10);
+  }
+  return str.slice(0, 10);
+}
+
 // ── Helper: fetch all customer data for a given month ─────────────────────────
 function getMonthData(month) {
-  // Parse year & month cleanly (e.g. '2026-07')
   const parts = (month || new Date().toISOString().slice(0, 7)).split('-');
   const year = parseInt(parts[0], 10);
   const mIndex = parseInt(parts[1], 10);
@@ -46,7 +60,11 @@ function getMonthData(month) {
       ORDER BY v.visit_date ASC, v.id ASC
     `;
 
-    const visits = db.prepare(visitsQuery).all(c.id, start, end);
+    const rawVisits = db.prepare(visitsQuery).all(c.id, start, end);
+    const visits = rawVisits.map(v => ({
+      ...v,
+      visit_date: formatDate(v.visit_date)
+    }));
 
     return {
       customer: c,
@@ -102,7 +120,7 @@ router.get('/monthly/pdf', (req, res) => {
       red:        '#b91c1c',   openBg:     '#fee2e2',
       green:      '#15803d',   resolvedBg: '#d1fae5',
       amber:      '#b45309',   pendingBg:  '#fef3c7',
-      slate:      '#475569',   closedBg:   '#f1f5f9',
+      slate:      '#475569',
     };
 
     const hRule = (y, color = C.light, lw = 0.5) => {
@@ -130,7 +148,7 @@ router.get('/monthly/pdf', (req, res) => {
     const totalResolved = data.reduce((s, r) => s + r.summary.resolved, 0);
     const totalPending  = data.reduce((s, r) => s + r.summary.pending, 0);
 
-    // Header
+    // Header Accent
     doc.rect(0, 0, PW, 6).fill(C.indigo);
 
     doc.fillColor(C.indigo).rect(LM, 22, 4, 38).fill();
@@ -235,11 +253,17 @@ router.get('/monthly/pdf', (req, res) => {
       // Visit Rows
       item.visits.forEach((v, vi) => {
         const rw = CW - 238;
+        const formattedDate = formatDate(v.visit_date);
+        
         let textH = 0;
         if (v.problem) textH += doc.fontSize(8).heightOfString(`Problem: ${v.problem}`, { width: rw });
         if (v.actions_taken) textH += doc.fontSize(8).heightOfString(`Actions: ${v.actions_taken}`, { width: rw });
         if (v.remarks) textH += doc.fontSize(7.5).heightOfString(`Remarks: ${v.remarks}`, { width: rw });
-        const rowH = Math.max(34, textH + 14);
+
+        const dateH = doc.fontSize(8.5).heightOfString(formattedDate, { width: 68 });
+        const engH  = doc.fontSize(8.5).heightOfString(v.engineer_name || '—', { width: 90 });
+        
+        const rowH  = Math.max(34, textH + 14, dateH + 12, engH + 12);
 
         if (curY + rowH > PH - 50) {
           doc.addPage();
@@ -253,9 +277,9 @@ router.get('/monthly/pdf', (req, res) => {
           doc.save().rect(LM, curY, CW, rowH).fill('#fafafa').restore();
         }
 
-        // Date
+        // Date (Clean YYYY-MM-DD format)
         doc.fontSize(8.5).font('Helvetica-Bold').fillColor(C.black)
-           .text(String(v.visit_date), LM + 6, curY + 6, { width: 68 });
+           .text(formattedDate, LM + 6, curY + 6, { width: 68 });
 
         // Engineer
         doc.fontSize(8.5).font('Helvetica').fillColor(C.dark)
@@ -389,7 +413,7 @@ router.get('/monthly/excel', async (req, res) => {
       cCell.font = sectionFont;
       cCell.fill = sectionFill;
       cCell.alignment = { vertical: 'middle', indent: 1 };
-      cCell.border = { bottom: { style: 'medium', color: { argb: 'FFCBD5E1' } } };
+      cCell.border = { bottom: { style: 'medium', color: { argb: 'FFCBD5E1' } };
 
       const statsRow = sheet.addRow([
         `Visits: ${item.summary.total}   ·   Open: ${item.summary.open}   ·   Resolved: ${item.summary.resolved}   ·   Pending: ${item.summary.pending}`
