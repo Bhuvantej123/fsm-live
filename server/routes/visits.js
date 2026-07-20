@@ -5,6 +5,29 @@ const path    = require('path');
 const fs      = require('fs');
 const db      = require('../db');
 
+// Helper to sanitize visit_date to YYYY-MM-DD with NO time component
+function formatDateOnly(d) {
+  if (!d) return null;
+  if (d instanceof Date) {
+    return d.toISOString().slice(0, 10);
+  }
+  const str = String(d);
+  if (str.includes('T')) return str.split('T')[0];
+  const parsed = new Date(d);
+  if (!isNaN(parsed.getTime())) {
+    return parsed.toISOString().slice(0, 10);
+  }
+  return str.slice(0, 10);
+}
+
+function cleanVisit(v) {
+  if (!v) return null;
+  return {
+    ...v,
+    visit_date: formatDateOnly(v.visit_date)
+  };
+}
+
 // ── Multer setup ──────────────────────────────────────────────────────────────
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, path.join(__dirname, '..', 'uploads')),
@@ -36,7 +59,7 @@ function visitWithDetails(id) {
   `).get(id);
   if (!visit) return null;
   visit.attachments = db.prepare('SELECT * FROM attachments WHERE visit_id = ?').all(id);
-  return visit;
+  return cleanVisit(visit);
 }
 
 // ── GET all visits (filterable) ───────────────────────────────────────────────
@@ -67,12 +90,13 @@ router.get('/', (req, res) => {
 
     let visits = db.prepare(q).all(...params);
 
-    if (with_attachments === 'true') {
-      visits = visits.map(v => ({
-        ...v,
-        attachments: db.prepare('SELECT * FROM attachments WHERE visit_id = ?').all(v.id)
-      }));
-    }
+    visits = visits.map(v => {
+      const cv = cleanVisit(v);
+      if (with_attachments === 'true') {
+        cv.attachments = db.prepare('SELECT * FROM attachments WHERE visit_id = ?').all(v.id);
+      }
+      return cv;
+    });
 
     res.json(visits);
   } catch (err) {
@@ -98,11 +122,13 @@ router.post('/', upload.array('attachments', 10), (req, res) => {
     if (!customer_id || !visit_date)
       return res.status(400).json({ error: 'customer_id and visit_date are required' });
 
+    const cleanDate = formatDateOnly(visit_date);
+
     const result = db.prepare(`
       INSERT INTO visits (customer_id, engineer_id, visit_date, problem, actions_taken, remarks, status)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `).run(
-      customer_id, engineer_id || null, visit_date,
+      customer_id, engineer_id || null, cleanDate,
       problem || null, actions_taken || null, remarks || null, status || 'open'
     );
 
@@ -125,6 +151,8 @@ router.put('/:id', upload.array('attachments', 10), (req, res) => {
     if (!existing) return res.status(404).json({ error: 'Not found' });
 
     const { customer_id, engineer_id, visit_date, problem, actions_taken, remarks, status } = req.body;
+    const cleanDate = visit_date ? formatDateOnly(visit_date) : existing.visit_date;
+
     db.prepare(`
       UPDATE visits
       SET customer_id=?, engineer_id=?, visit_date=?, problem=?, actions_taken=?, remarks=?, status=?
@@ -132,7 +160,7 @@ router.put('/:id', upload.array('attachments', 10), (req, res) => {
     `).run(
       customer_id   || existing.customer_id,
       engineer_id !== undefined ? (engineer_id || null) : existing.engineer_id,
-      visit_date    || existing.visit_date,
+      cleanDate,
       problem       !== undefined ? problem       : existing.problem,
       actions_taken !== undefined ? actions_taken : existing.actions_taken,
       remarks       !== undefined ? remarks       : existing.remarks,
