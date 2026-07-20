@@ -97,7 +97,6 @@ export default function VisitForm({ visit, customerId, onSuccess, onCancel }) {
           <option value="open">Open</option>
           <option value="pending">Pending</option>
           <option value="resolved">Resolved</option>
-          <option value="closed">Closed</option>
         </select>
       </div>
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Plus, Search, Trash2, Eye, Filter, ClipboardList } from 'lucide-react'
 import { api } from '../api'
 import StatusBadge from '../components/StatusBadge'
@@ -8,17 +8,28 @@ import VisitForm   from '../components/VisitForm'
 import { useConfirm } from '../components/ConfirmDialog'
 
 export default function VisitsPage() {
+  const [searchParams] = useSearchParams()
+  const initialStatus = searchParams.get('status') || ''
+
   const [visits,    setVisits]    = useState([])
   const [engineers, setEngineers] = useState([])
   const [customers, setCustomers] = useState([])
   const [filters,   setFilters]   = useState({
-    status: '', start_date: '', end_date: '', search: '', engineer_id: '', customer_id: ''
+    status: initialStatus, start_date: '', end_date: '', search: '', engineer_id: '', customer_id: ''
   })
   const [loading,  setLoading]  = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editing,  setEditing]  = useState(null)
   const nav = useNavigate()
   const { confirm, dialog: confirmDialog } = useConfirm()
+
+  // Sync status if search params change
+  useEffect(() => {
+    const s = searchParams.get('status')
+    if (s !== null) {
+      setFilters(prev => ({ ...prev, status: s }))
+    }
+  }, [searchParams])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -63,24 +74,23 @@ export default function VisitsPage() {
       {/* Filters */}
       <div className="card" style={{ marginBottom: 20 }}>
         <div className="filter-bar" style={{ flexWrap: 'wrap' }}>
-          <div className="search-wrap" style={{ flex: '1 1 200px' }}>
+          <div className="search-wrap" style={{ flex: '0 1 240px', minWidth: 180 }}>
             <Search size={15} className="s-icon" />
             <input
               id="visits-search"
               className="form-control"
               style={{ paddingLeft: 36 }}
-              placeholder="Search problem, customer, engineer…"
+              placeholder="Search problem, customer…"
               value={filters.search}
               onChange={f('search')}
             />
           </div>
 
-          <select className="form-control" style={{ width: 145 }} value={filters.status} onChange={f('status')}>
+          <select className="form-control" style={{ width: 140 }} value={filters.status} onChange={f('status')}>
             <option value="">All Status</option>
             <option value="open">Open</option>
             <option value="pending">Pending</option>
             <option value="resolved">Resolved</option>
-            <option value="closed">Closed</option>
           </select>
 
           <select className="form-control" style={{ width: 170 }} value={filters.engineer_id} onChange={f('engineer_id')}>

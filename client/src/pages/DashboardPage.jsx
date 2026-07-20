@@ -49,12 +49,12 @@ export default function DashboardPage() {
       {/* ── KPI Cards ── */}
       <div className="kpi-grid">
         {[
-          { label: 'Total Visits', value: f.total || 0,          cls: 'kpi-primary', icon: <ClipboardList size={22} color="var(--primary-light)" />, bg: 'rgba(99,102,241,.14)' },
-          { label: 'Open Issues',  value: f.open_count || 0,     cls: 'kpi-danger',  icon: <AlertCircle   size={22} color="#fca5a5" />,              bg: 'rgba(239,68,68,.14)' },
-          { label: 'Pending',      value: f.pending_count || 0,  cls: 'kpi-warning', icon: <Clock         size={22} color="#fcd34d" />,              bg: 'rgba(245,158,11,.14)' },
-          { label: 'Resolved',     value: f.resolved_count || 0, cls: 'kpi-success', icon: <CheckCircle   size={22} color="#6ee7b7" />,              bg: 'rgba(16,185,129,.14)' },
-        ].map(({ label, value, cls, icon, bg }) => (
-          <div key={label} className={`card kpi-card ${cls}`}>
+          { label: 'Total Visits', value: f.total || 0,          cls: 'kpi-primary', icon: <ClipboardList size={22} color="var(--primary-light)" />, bg: 'rgba(99,102,241,.14)', to: '/visits' },
+          { label: 'Open Issues',  value: f.open_count || 0,     cls: 'kpi-danger',  icon: <AlertCircle   size={22} color="#fca5a5" />,              bg: 'rgba(239,68,68,.14)',  to: '/visits?status=open' },
+          { label: 'Pending',      value: f.pending_count || 0,  cls: 'kpi-warning', icon: <Clock         size={22} color="#fcd34d" />,              bg: 'rgba(245,158,11,.14)', to: '/visits?status=pending' },
+          { label: 'Resolved',     value: f.resolved_count || 0, cls: 'kpi-success', icon: <CheckCircle   size={22} color="#6ee7b7" />,              bg: 'rgba(16,185,129,.14)', to: '/visits?status=resolved' },
+        ].map(({ label, value, cls, icon, bg, to }) => (
+          <div key={label} className={`card kpi-card ${cls}`} style={{ cursor: 'pointer' }} onClick={() => nav(to)}>
             <div className="kpi-icon" style={{ background: bg }}>{icon}</div>
             <div className="kpi-value">{value}</div>
             <div className="kpi-label">{label}</div>
@@ -90,7 +90,6 @@ export default function DashboardPage() {
               <option value="open">Open</option>
               <option value="pending">Pending</option>
               <option value="resolved">Resolved</option>
-              <option value="closed">Closed</option>
             </select>
 
             <input type="date" className="form-control" style={{ width: 155 }}

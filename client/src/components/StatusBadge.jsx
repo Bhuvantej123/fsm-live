@@ -2,7 +2,6 @@ const CFG = {
   open:     { label: 'Open',     cls: 'badge-open'     },
   resolved: { label: 'Resolved', cls: 'badge-resolved' },
   pending:  { label: 'Pending',  cls: 'badge-pending'  },
-  closed:   { label: 'Closed',   cls: 'badge-closed'   },
 }
 
 export default function StatusBadge({ status }) {
