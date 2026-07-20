@@ -89,7 +89,7 @@ router.get('/monthly', (req, res) => {
   }
 });
 
-// ── GET PDF ───────────────────────────────────────────────────────────────────
+// ── GET PDF (A4 Landscape — Matches Excel Layout 1-to-1) ──────────────────────
 router.get('/monthly/pdf', (req, res) => {
   try {
     const month      = req.query.month || new Date().toISOString().slice(0, 7);
@@ -99,14 +99,21 @@ router.get('/monthly/pdf', (req, res) => {
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="FSM_Report_${month}.pdf"`);
 
-    const doc = new PDFDoc({ margin: 45, size: 'A4', bufferPages: true, autoFirstPage: true });
+    // Use Landscape orientation for 6-column matching layout
+    const doc = new PDFDoc({
+      margin: 36,
+      size: 'A4',
+      layout: 'landscape',
+      bufferPages: true,
+      autoFirstPage: true
+    });
     doc.pipe(res);
 
-    const PW  = doc.page.width;          // 595
-    const PH  = doc.page.height;         // 842
-    const LM  = 45;                      // left margin
-    const RM  = PW - 45;                 // right margin
-    const CW  = RM - LM;                 // content width  ≈ 505
+    const PW  = doc.page.width;          // 841.89
+    const PH  = doc.page.height;         // 595.28
+    const LM  = 36;                      // left margin
+    const RM  = PW - 36;                 // right margin
+    const CW  = RM - LM;                 // content width = 769.89
 
     // ── Colour palette ──────────────────────────────────────────────────────
     const C = {
@@ -136,9 +143,9 @@ router.get('/monthly/pdf', (req, res) => {
 
     const pill = (text, fg, bg, x, y) => {
       const tw = doc.fontSize(7.5).font('Helvetica-Bold').widthOfString(text);
-      const ph = 11, pw2 = tw + 8, r = 2;
+      const ph = 12, pw2 = tw + 10, r = 2;
       doc.save().roundedRect(x, y - 1, pw2, ph, r).fill(bg);
-      doc.fillColor(fg).fontSize(7.5).font('Helvetica-Bold').text(text, x + 4, y + 0.5).restore();
+      doc.fillColor(fg).fontSize(7.5).font('Helvetica-Bold').text(text, x + 5, y + 1).restore();
       return pw2;
     };
 
@@ -148,24 +155,24 @@ router.get('/monthly/pdf', (req, res) => {
     const totalResolved = data.reduce((s, r) => s + r.summary.resolved, 0);
     const totalPending  = data.reduce((s, r) => s + r.summary.pending, 0);
 
-    // Header Accent
+    // Header Accent Bar
     doc.rect(0, 0, PW, 6).fill(C.indigo);
 
-    doc.fillColor(C.indigo).rect(LM, 22, 4, 38).fill();
-    doc.fontSize(20).font('Helvetica-Bold').fillColor(C.black)
-       .text('Field Service Management Report', LM + 14, 22);
-    doc.fontSize(11).font('Helvetica').fillColor(C.mid)
-       .text(`Monthly Summary  ·  ${monthLabel}`, LM + 14, 46);
+    doc.fillColor(C.indigo).rect(LM, 18, 4, 34).fill();
+    doc.fontSize(18).font('Helvetica-Bold').fillColor(C.black)
+       .text('Field Service Management Report', LM + 12, 18);
+    doc.fontSize(10).font('Helvetica').fillColor(C.mid)
+       .text(`Monthly Summary  ·  ${monthLabel.toUpperCase()}`, LM + 12, 38);
 
     const genDate = new Date().toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
     doc.fontSize(8.5).font('Helvetica').fillColor(C.muted)
-       .text(`Generated: ${genDate}`, LM, 25, { width: CW, align: 'right' });
+       .text(`Generated: ${genDate}`, LM, 20, { width: CW, align: 'right' });
 
-    hRule(72, C.indigo, 1);
+    hRule(58, C.indigo, 1);
 
-    // KPI Summary
-    const kpiY  = 82;
-    const kpiH  = 52;
+    // KPI Summary Band
+    const kpiY  = 66;
+    const kpiH  = 44;
     const kpis  = [
       { label: 'Total Visits', value: totalVisits,   color: C.indigo },
       { label: 'Open',         value: totalOpen,     color: C.red    },
@@ -179,43 +186,67 @@ router.get('/monthly/pdf', (req, res) => {
 
     kpis.forEach((k, i) => {
       const cx = LM + i * (CW / kpis.length) + (CW / kpis.length) / 2;
-      doc.fontSize(18).font('Helvetica-Bold').fillColor(k.color)
-         .text(String(k.value), cx - 30, kpiY + 10, { width: 60, align: 'center' });
+      doc.fontSize(16).font('Helvetica-Bold').fillColor(k.color)
+         .text(String(k.value), cx - 30, kpiY + 8, { width: 60, align: 'center' });
       doc.fontSize(7).font('Helvetica-Bold').fillColor(C.muted)
-         .text(k.label.toUpperCase(), cx - 30, kpiY + 34, { width: 60, align: 'center' });
+         .text(k.label.toUpperCase(), cx - 30, kpiY + 28, { width: 60, align: 'center' });
     });
 
     for (let i = 1; i < kpis.length; i++) {
       const dx = LM + i * (CW / kpis.length);
       doc.save().strokeColor('#e2e8f0').lineWidth(0.5)
-         .moveTo(dx, kpiY + 10).lineTo(dx, kpiY + kpiH - 10).stroke().restore();
+         .moveTo(dx, kpiY + 8).lineTo(dx, kpiY + kpiH - 8).stroke().restore();
     }
 
-    let curY = kpiY + kpiH + 18;
+    let curY = kpiY + kpiH + 16;
+
+    // 6 Columns exact specification matching Excel layout
+    const cols = [
+      { label: 'VISIT DATE',      x: LM + 6,   w: 75  },
+      { label: 'ENGINEER',        x: LM + 86,  w: 110 },
+      { label: 'STATUS',          x: LM + 201, w: 65  },
+      { label: 'PROBLEM / ISSUE', x: LM + 271, w: 175 },
+      { label: 'ACTIONS TAKEN',   x: LM + 451, w: 175 },
+      { label: 'REMARKS',         x: LM + 631, w: 132 },
+    ];
+
+    const drawTableHead = (y) => {
+      doc.save().rect(LM, y, CW, 18).fill('#e2e8f0').restore();
+      cols.forEach(col => {
+        doc.fontSize(7).font('Helvetica-Bold').fillColor(C.mid)
+           .text(col.label, col.x, y + 5, { width: col.w });
+      });
+    };
 
     // Customer Sections
     for (const item of data) {
-      if (curY > PH - 120) {
+      if (curY > PH - 100) {
         doc.addPage();
         doc.rect(0, 0, PW, 6).fill(C.indigo);
         curY = 24;
       }
 
-      // Customer Header
-      doc.save().roundedRect(LM, curY, CW, 44, 4).fill(C.bg).restore();
-      doc.save().roundedRect(LM, curY, CW, 44, 4).lineWidth(0.5).strokeColor(C.light).stroke().restore();
-      doc.save().rect(LM, curY, 4, 44).fill(C.indigo).restore();
+      // Customer Header Banner (Matches Excel)
+      doc.save().roundedRect(LM, curY, CW, 36, 4).fill(C.bg).restore();
+      doc.save().roundedRect(LM, curY, CW, 36, 4).lineWidth(0.5).strokeColor(C.light).stroke().restore();
+      doc.save().rect(LM, curY, 4, 36).fill(C.indigo).restore();
 
-      doc.fontSize(11).font('Helvetica-Bold').fillColor(C.black)
-         .text(item.customer.name, LM + 14, curY + 7, { width: CW * 0.58 });
+      const custTitle = `CUSTOMER: ${item.customer.name.toUpperCase()}`;
+      doc.fontSize(10).font('Helvetica-Bold').fillColor(C.black)
+         .text(custTitle, LM + 12, curY + 6, { width: CW * 0.65 });
 
-      const meta = [item.customer.contact_person, item.customer.phone, item.customer.address]
-        .filter(Boolean).join('  ·  ');
+      const meta = [
+        item.customer.contact_person && `Contact: ${item.customer.contact_person}`,
+        item.customer.phone && `Phone: ${item.customer.phone}`,
+        item.customer.address && `Address: ${item.customer.address}`
+      ].filter(Boolean).join('   |   ');
+
       if (meta) {
-        doc.fontSize(8).font('Helvetica').fillColor(C.mid)
-           .text(meta, LM + 14, curY + 25, { width: CW * 0.58 });
+        doc.fontSize(7.5).font('Helvetica').fillColor(C.mid)
+           .text(meta, LM + 12, curY + 21, { width: CW * 0.65 });
       }
 
+      // Right mini stats
       const stats = [
         { l: 'Visits',   v: item.summary.total,    c: C.indigo },
         { l: 'Open',     v: item.summary.open,      c: C.red    },
@@ -223,106 +254,92 @@ router.get('/monthly/pdf', (req, res) => {
         { l: 'Pending',  v: item.summary.pending,   c: C.amber  },
       ];
       stats.forEach((s, si) => {
-        const sx = RM - (stats.length - si) * 62 + 10;
-        doc.fontSize(12).font('Helvetica-Bold').fillColor(s.c)
-           .text(String(s.v), sx, curY + 8, { width: 52, align: 'center' });
-        doc.fontSize(6.5).font('Helvetica-Bold').fillColor(C.muted)
-           .text(s.l.toUpperCase(), sx, curY + 27, { width: 52, align: 'center' });
+        const sx = RM - (stats.length - si) * 54 + 5;
+        doc.fontSize(11).font('Helvetica-Bold').fillColor(s.c)
+           .text(String(s.v), sx, curY + 5, { width: 44, align: 'center' });
+        doc.fontSize(6).font('Helvetica-Bold').fillColor(C.muted)
+           .text(s.l.toUpperCase(), sx, curY + 21, { width: 44, align: 'center' });
       });
 
-      curY += 52;
+      curY += 42;
 
-      // Table Header
-      const drawTableHead = (y) => {
-        doc.save().rect(LM, y, CW, 16).fill('#f1f5f9').restore();
-        const cols = [
-          { label: 'DATE',         x: LM + 6,   w: 68  },
-          { label: 'ENGINEER',     x: LM + 76,  w: 90  },
-          { label: 'STATUS',       x: LM + 170, w: 60  },
-          { label: 'PROBLEM / ACTIONS / REMARKS', x: LM + 234, w: CW - 238 },
-        ];
-        cols.forEach(col => {
-          doc.fontSize(6.5).font('Helvetica-Bold').fillColor(C.mid)
-             .text(col.label, col.x, y + 4, { width: col.w });
-        });
-      };
-
+      // Draw Table Column Headers
       drawTableHead(curY);
       curY += 18;
 
-      // Visit Rows
-      item.visits.forEach((v, vi) => {
-        const rw = CW - 238;
-        const formattedDate = formatDate(v.visit_date);
-        
-        let textH = 0;
-        if (v.problem) textH += doc.fontSize(8).heightOfString(`Problem: ${v.problem}`, { width: rw });
-        if (v.actions_taken) textH += doc.fontSize(8).heightOfString(`Actions: ${v.actions_taken}`, { width: rw });
-        if (v.remarks) textH += doc.fontSize(7.5).heightOfString(`Remarks: ${v.remarks}`, { width: rw });
+      if (item.visits.length === 0) {
+        doc.fontSize(8.5).font('Helvetica-Oblique').fillColor(C.muted)
+           .text('No visits logged for this month.', LM + 10, curY + 6);
+        curY += 24;
+      } else {
+        item.visits.forEach((v, vi) => {
+          const dateStr  = formatDate(v.visit_date);
+          const engStr   = v.engineer_name || '—';
+          const probStr  = v.problem || '—';
+          const actStr   = v.actions_taken || '—';
+          const remStr   = v.remarks || '—';
 
-        const dateH = doc.fontSize(8.5).heightOfString(formattedDate, { width: 68 });
-        const engH  = doc.fontSize(8.5).heightOfString(v.engineer_name || '—', { width: 90 });
-        
-        const rowH  = Math.max(34, textH + 14, dateH + 12, engH + 12);
+          const dateH = doc.fontSize(8.5).heightOfString(dateStr, { width: 75 });
+          const engH  = doc.fontSize(8.5).heightOfString(engStr,  { width: 105 });
+          const probH = doc.fontSize(8.5).heightOfString(probStr, { width: 170 });
+          const actH  = doc.fontSize(8.5).heightOfString(actStr,  { width: 170 });
+          const remH  = doc.fontSize(8.0).heightOfString(remStr,  { width: 125 });
 
-        if (curY + rowH > PH - 50) {
-          doc.addPage();
-          doc.rect(0, 0, PW, 6).fill(C.indigo);
-          curY = 24;
-          drawTableHead(curY);
-          curY += 18;
-        }
+          const rowH  = Math.max(26, dateH + 10, engH + 10, probH + 10, actH + 10, remH + 10);
 
-        if (vi % 2 === 0) {
-          doc.save().rect(LM, curY, CW, rowH).fill('#fafafa').restore();
-        }
+          if (curY + rowH > PH - 45) {
+            doc.addPage();
+            doc.rect(0, 0, PW, 6).fill(C.indigo);
+            curY = 24;
+            drawTableHead(curY);
+            curY += 18;
+          }
 
-        // Date (Clean YYYY-MM-DD format)
-        doc.fontSize(8.5).font('Helvetica-Bold').fillColor(C.black)
-           .text(formattedDate, LM + 6, curY + 6, { width: 68 });
+          // Alternate row bg
+          if (vi % 2 === 0) {
+            doc.save().rect(LM, curY, CW, rowH).fill('#fafafa').restore();
+          }
 
-        // Engineer
-        doc.fontSize(8.5).font('Helvetica').fillColor(C.dark)
-           .text(v.engineer_name || '—', LM + 76, curY + 6, { width: 90 });
+          // 1. Visit Date
+          doc.fontSize(8.5).font('Helvetica-Bold').fillColor(C.black)
+             .text(dateStr, cols[0].x, curY + 5, { width: cols[0].w });
 
-        // Status pill
-        const sc = statusConfig[v.status] || statusConfig.open;
-        pill(sc.label, sc.fg, sc.bg, LM + 170, curY + 6);
+          // 2. Engineer
+          doc.fontSize(8.5).font('Helvetica').fillColor(C.dark)
+             .text(engStr, cols[1].x, curY + 5, { width: cols[1].w });
 
-        // Problem / Actions / Remarks
-        let ty = curY + 6;
-        const rx = LM + 234;
+          // 3. Status Pill
+          const sc = statusConfig[v.status] || statusConfig.open;
+          pill(sc.label, sc.fg, sc.bg, cols[2].x, curY + 5);
 
-        if (v.problem) {
-          doc.fontSize(8).font('Helvetica-Bold').fillColor(C.black).text('Problem: ', rx, ty, { continued: true });
-          doc.font('Helvetica').fillColor(C.dark).text(v.problem, { width: rw });
-          ty = doc.y + 3;
-        }
-        if (v.actions_taken) {
-          doc.fontSize(8).font('Helvetica-Bold').fillColor(C.black).text('Actions: ', rx, ty, { continued: true });
-          doc.font('Helvetica').fillColor(C.dark).text(v.actions_taken, { width: rw });
-          ty = doc.y + 3;
-        }
-        if (v.remarks) {
-          doc.fontSize(7.5).font('Helvetica-Oblique').fillColor(C.muted).text(`Remarks: ${v.remarks}`, rx, ty, { width: rw });
-          ty = doc.y + 3;
-        }
+          // 4. Problem / Issue
+          doc.fontSize(8.5).font('Helvetica').fillColor(C.dark)
+             .text(probStr, cols[3].x, curY + 5, { width: cols[3].w });
 
-        hRule(curY + rowH, '#e2e8f0', 0.5);
-        curY += rowH;
-      });
+          // 5. Actions Taken
+          doc.fontSize(8.5).font('Helvetica').fillColor(C.dark)
+             .text(actStr, cols[4].x, curY + 5, { width: cols[4].w });
 
-      curY += 16;
+          // 6. Remarks
+          doc.fontSize(8.0).font('Helvetica-Oblique').fillColor(C.mid)
+             .text(remStr, cols[5].x, curY + 5, { width: cols[5].w });
+
+          hRule(curY + rowH, '#e2e8f0', 0.5);
+          curY += rowH;
+        });
+      }
+
+      curY += 14;
     }
 
     // Footers
     const totalPages = doc.bufferedPageRange().count;
     for (let p = 0; p < totalPages; p++) {
       doc.switchToPage(p);
-      hRule(PH - 34, C.light, 0.5);
+      hRule(PH - 28, C.light, 0.5);
       doc.fontSize(7.5).font('Helvetica').fillColor(C.muted)
-         .text(`FSM — Field Service Management  ·  ${monthLabel}`, LM, PH - 26)
-         .text(`Page ${p + 1} of ${totalPages}`, LM, PH - 26, { width: CW, align: 'right' });
+         .text(`FSM — Field Service Management Report  ·  ${monthLabel}`, LM, PH - 20)
+         .text(`Page ${p + 1} of ${totalPages}`, LM, PH - 20, { width: CW, align: 'right' });
     }
 
     doc.end();
@@ -413,7 +430,7 @@ router.get('/monthly/excel', async (req, res) => {
       cCell.font = sectionFont;
       cCell.fill = sectionFill;
       cCell.alignment = { vertical: 'middle', indent: 1 };
-      cCell.border = { bottom: { style: 'medium', color: { argb: 'FFCBD5E1' } };
+      cCell.border = { bottom: { style: 'medium', color: { argb: 'FFCBD5E1' } } };
 
       const statsRow = sheet.addRow([
         `Visits: ${item.summary.total}   ·   Open: ${item.summary.open}   ·   Resolved: ${item.summary.resolved}   ·   Pending: ${item.summary.pending}`
