@@ -76,10 +76,10 @@ export default function VisitsPage() {
       </div>
 
       {/* Sleek Compact Control Bar */}
-      <div className="card" style={{ marginBottom: 20, padding: '12px 16px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+      <div className="card" style={{ marginBottom: 20, padding: '10px 14px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {/* Small compact search box */}
-          <div className="search-wrap" style={{ width: 200, minWidth: 160 }}>
+          <div className="search-wrap" style={{ flex: 1, maxWidth: 260 }}>
             <Search size={14} className="s-icon" />
             <input
               id="visits-search"
@@ -95,7 +95,7 @@ export default function VisitsPage() {
           <button
             className={`btn ${showFilters || activeFilterCount > 0 ? 'btn-primary' : 'btn-secondary'} btn-sm`}
             onClick={() => setShowFilters(s => !s)}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 38, flexShrink: 0 }}
           >
             <Filter size={14} />
             <span>Filters</span>
