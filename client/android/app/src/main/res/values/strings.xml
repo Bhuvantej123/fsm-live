@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">FSM Field Service</string>
+    <string name="title_activity_main">FSM Field Service</string>
+    <string name="package_name">com.fsm.app</string>
+    <string name="custom_url_scheme">com.fsm.app</string>
+</resources>
