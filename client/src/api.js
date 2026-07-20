@@ -6,7 +6,7 @@ export function getServerUrl() {
   if (typeof window !== 'undefined' && window.location.hostname === '10.0.2.2') {
     return 'http://10.0.2.2:3001';
   }
-  return 'https://fsm-dad-live-app.loca.lt';
+  return 'https://fsm-live.onrender.com';
 }
 
 export function setServerUrl(url) {
