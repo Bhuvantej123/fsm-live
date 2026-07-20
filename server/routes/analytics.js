@@ -2,6 +2,8 @@ const express = require('express');
 const router  = express.Router();
 const db      = require('../db');
 
+const isPg = Boolean(process.env.DATABASE_URL);
+
 // GET analytics summary (optionally date-filtered)
 router.get('/summary', (req, res) => {
   try {
@@ -31,18 +33,26 @@ router.get('/summary', (req, res) => {
         SUM(CASE WHEN v.status = 'pending'  THEN 1 ELSE 0 END)          AS pending
       FROM engineers e
       LEFT JOIN visits v ON e.id = v.engineer_id AND 1=1 ${dateWhere}
-      GROUP BY e.id
+      GROUP BY e.id, e.name
       ORDER BY total_visits DESC
     `).all(...dateParams);
 
-    // Monthly trend – last 6 months
-    const monthlyTrend = db.prepare(`
+    // Monthly trend – last 6 months (PostgreSQL / SQLite dual query)
+    const monthlyTrendQuery = isPg ? `
+      SELECT TO_CHAR(visit_date::date, 'YYYY-MM') AS month, COUNT(*)::int AS count
+      FROM visits
+      WHERE visit_date >= CURRENT_DATE - INTERVAL '6 months'
+      GROUP BY TO_CHAR(visit_date::date, 'YYYY-MM')
+      ORDER BY month ASC
+    ` : `
       SELECT strftime('%Y-%m', visit_date) AS month, COUNT(*) AS count
       FROM visits
       WHERE visit_date >= date('now', '-6 months')
       GROUP BY month
       ORDER BY month ASC
-    `).all();
+    `;
+
+    const monthlyTrend = db.prepare(monthlyTrendQuery).all();
 
     // Top customers by visit count
     const topCustomers = db.prepare(`
@@ -50,13 +60,14 @@ router.get('/summary', (req, res) => {
         SUM(CASE WHEN v.status IN ('open','pending') THEN 1 ELSE 0 END) AS unresolved
       FROM customers c
       LEFT JOIN visits v ON c.id = v.customer_id AND 1=1 ${dateWhere}
-      GROUP BY c.id
+      GROUP BY c.id, c.name
       ORDER BY visit_count DESC
       LIMIT 10
     `).all(...dateParams);
 
     res.json({ totals, engineerPerf, monthlyTrend, topCustomers });
   } catch (err) {
+    console.error('Analytics Error:', err);
     res.status(500).json({ error: err.message });
   }
 });
