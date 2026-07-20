@@ -82,6 +82,6 @@ export const api = {
 
   // Reports
   getReport:       month => req(`/reports/monthly?month=${month}`),
-  reportPdfUrl:    month => `${getApiBase()}/reports/monthly/pdf?month=${month}`,
-  reportExcelUrl:  month => `${getApiBase()}/reports/monthly/excel?month=${month}`,
+  reportPdfUrl:    month => `${getApiBase()}/reports/monthly/pdf?month=${month}&_t=${Date.now()}`,
+  reportExcelUrl:  month => `${getApiBase()}/reports/monthly/excel?month=${month}&_t=${Date.now()}`,
 }
