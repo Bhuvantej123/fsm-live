@@ -89,7 +89,23 @@ if (DATABASE_URL) {
         original_name VARCHAR(255) NOT NULL,
         uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(100) NOT NULL UNIQUE,
+        password_hash VARCHAR(255) NOT NULL,
+        role VARCHAR(20) NOT NULL DEFAULT 'engineer',
+        engineer_id INTEGER REFERENCES engineers(id) ON DELETE SET NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
     `);
+    // Seed admin user if not exists
+    const bcrypt = require('bcryptjs');
+    const existing = querySync('SELECT id FROM users WHERE username = $1', ['admin']);
+    if (!existing.rows.length) {
+      const hash = bcrypt.hashSync('admin123', 10);
+      querySync("INSERT INTO users (username, password_hash, role) VALUES ($1, $2, 'admin')", ['admin', hash]);
+      console.log('✅ Default admin user created: admin / admin123');
+    }
     console.log('✅ PostgreSQL Schema Verified on Neon!');
   } catch (e) {
     console.error('PostgreSQL Schema Init:', e.message);
@@ -184,7 +200,24 @@ if (DATABASE_URL) {
       uploaded_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (visit_id) REFERENCES visits(id) ON DELETE CASCADE
     );
+    CREATE TABLE IF NOT EXISTS users (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      username      TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      role          TEXT NOT NULL DEFAULT 'engineer',
+      engineer_id   INTEGER REFERENCES engineers(id) ON DELETE SET NULL,
+      created_at    DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
   `);
+
+  // Seed admin user if not exists
+  const bcrypt = require('bcryptjs');
+  const existing = db.prepare('SELECT id FROM users WHERE username = ?').get('admin');
+  if (!existing) {
+    const hash = bcrypt.hashSync('admin123', 10);
+    db.prepare("INSERT INTO users (username, password_hash, role) VALUES (?, ?, 'admin')").run('admin', hash);
+    console.log('✅ Default admin user created: admin / admin123');
+  }
 
   module.exports = db;
 }

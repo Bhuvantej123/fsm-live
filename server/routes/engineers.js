@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const { authenticate, requireAdmin } = require('../middleware/auth');
 
 router.get('/', (req, res) => {
   try {
@@ -21,7 +22,7 @@ router.get('/:id', (req, res) => {
   }
 });
 
-router.post('/', (req, res) => {
+router.post('/', authenticate, requireAdmin, (req, res) => {
   try {
     const { name, email, phone } = req.body;
     if (!name) return res.status(400).json({ error: 'Name is required' });
@@ -34,7 +35,7 @@ router.post('/', (req, res) => {
   }
 });
 
-router.put('/:id', (req, res) => {
+router.put('/:id', authenticate, requireAdmin, (req, res) => {
   try {
     const e = db.prepare('SELECT * FROM engineers WHERE id = ?').get(req.params.id);
     if (!e) return res.status(404).json({ error: 'Not found' });
@@ -48,7 +49,7 @@ router.put('/:id', (req, res) => {
   }
 });
 
-router.delete('/:id', (req, res) => {
+router.delete('/:id', authenticate, requireAdmin, (req, res) => {
   try {
     db.prepare('DELETE FROM engineers WHERE id = ?').run(req.params.id);
     res.json({ message: 'Deleted' });

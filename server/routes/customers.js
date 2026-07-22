@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const { authenticate, requireAdmin } = require('../middleware/auth');
 
 // GET all customers with optional search & contract_type filter
 router.get('/', (req, res) => {
@@ -55,7 +56,7 @@ router.get('/:id', (req, res) => {
 });
 
 // POST create
-router.post('/', (req, res) => {
+router.post('/', authenticate, requireAdmin, (req, res) => {
   try {
     const { name, contact_person, phone, email, address, contract_type, notes } = req.body;
     if (!name) return res.status(400).json({ error: 'Name is required' });
@@ -73,7 +74,7 @@ router.post('/', (req, res) => {
 });
 
 // PUT update
-router.put('/:id', (req, res) => {
+router.put('/:id', authenticate, requireAdmin, (req, res) => {
   try {
     const c = db.prepare('SELECT * FROM customers WHERE id = ?').get(req.params.id);
     if (!c) return res.status(404).json({ error: 'Customer not found' });
@@ -96,7 +97,7 @@ router.put('/:id', (req, res) => {
 });
 
 // DELETE
-router.delete('/:id', (req, res) => {
+router.delete('/:id', authenticate, requireAdmin, (req, res) => {
   try {
     const c = db.prepare('SELECT * FROM customers WHERE id = ?').get(req.params.id);
     if (!c) return res.status(404).json({ error: 'Customer not found' });

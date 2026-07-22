@@ -2,28 +2,38 @@ import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Users, ClipboardList,
-  UserCog, BarChart3, FileText, Wrench, Wifi, X
+  UserCog, BarChart3, FileText, Wrench, Wifi, X, LogOut, ShieldCheck, HardHat
 } from 'lucide-react'
 import { getServerUrl, setServerUrl } from '../api'
+import { useAuth } from '../context/AuthContext'
 
-const NAV = [
+const NAV_ALL = [
   {
     section: 'Overview',
+    adminOnly: false,
     items: [
       { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard'  },
       { to: '/analytics', icon: BarChart3,        label: 'Analytics'  },
     ]
   },
   {
-    section: 'Management',
+    section: 'Field Work',
+    adminOnly: false,
     items: [
-      { to: '/customers', icon: Users,         label: 'Customers' },
-      { to: '/visits',    icon: ClipboardList, label: 'Visits'    },
-      { to: '/engineers', icon: UserCog,       label: 'Engineers' },
+      { to: '/visits', icon: ClipboardList, label: 'Visits' },
+    ]
+  },
+  {
+    section: 'Management',
+    adminOnly: true,
+    items: [
+      { to: '/customers', icon: Users,   label: 'Customers' },
+      { to: '/engineers', icon: UserCog, label: 'Engineers' },
     ]
   },
   {
     section: 'Reports',
+    adminOnly: true,
     items: [
       { to: '/reports', icon: FileText, label: 'Monthly Reports' },
     ]
@@ -31,6 +41,7 @@ const NAV = [
 ]
 
 export default function Sidebar({ isOpen, onClose }) {
+  const { user, logout, isAdmin } = useAuth()
   const [showServerModal, setShowServerModal] = useState(false)
   const [serverIpInput, setServerIpInput] = useState('')
 
@@ -45,6 +56,11 @@ export default function Sidebar({ isOpen, onClose }) {
     setShowServerModal(false)
     window.location.reload()
   }
+
+  const visibleNav = NAV_ALL.filter(section => !section.adminOnly || isAdmin)
+
+  const initials = user?.username?.slice(0, 2).toUpperCase() || '??'
+  const roleLabel = isAdmin ? 'Administrator' : 'Field Engineer'
 
   return (
     <>
@@ -75,9 +91,49 @@ export default function Sidebar({ isOpen, onClose }) {
           </div>
         </div>
 
+        {/* User badge */}
+        {user && (
+          <div style={{
+            margin: '0 12px 8px',
+            padding: '10px 12px',
+            borderRadius: 'var(--r-sm)',
+            background: isAdmin
+              ? 'linear-gradient(135deg, rgba(99,102,241,.15) 0%, rgba(139,92,246,.08) 100%)'
+              : 'rgba(255,255,255,0.03)',
+            border: '1px solid',
+            borderColor: isAdmin ? 'rgba(99,102,241,.25)' : 'var(--border)',
+            display: 'flex', alignItems: 'center', gap: 10,
+          }}>
+            <div style={{
+              width: 34, height: 34, borderRadius: 10, flexShrink: 0,
+              background: isAdmin
+                ? 'linear-gradient(135deg, var(--primary), var(--primary-dark))'
+                : 'linear-gradient(135deg, #06b6d4, #0891b2)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 12, fontWeight: 800, color: '#fff',
+            }}>
+              {initials}
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {user.username}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                {isAdmin
+                  ? <ShieldCheck size={10} color="#818cf8" />
+                  : <HardHat size={10} color="#22d3ee" />
+                }
+                <span style={{ fontSize: 10, color: isAdmin ? '#818cf8' : '#22d3ee', fontWeight: 600 }}>
+                  {roleLabel}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Nav */}
         <nav className="sidebar-nav">
-          {NAV.map(({ section, items }) => (
+          {visibleNav.map(({ section, items }) => (
             <div key={section}>
               <div className="nav-section">{section}</div>
               {items.map(({ to, icon: Icon, label }) => (
@@ -95,13 +151,23 @@ export default function Sidebar({ isOpen, onClose }) {
         </nav>
 
         <div className="sidebar-footer" style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
+          {isAdmin && (
+            <button
+              onClick={openServerModal}
+              className="btn btn-ghost btn-sm"
+              style={{ width: '100%', fontSize: 11, padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+            >
+              <Wifi size={13} color="var(--primary-light)" />
+              <span>Server IP Config</span>
+            </button>
+          )}
           <button
-            onClick={openServerModal}
+            onClick={logout}
             className="btn btn-ghost btn-sm"
-            style={{ width: '100%', fontSize: 11, padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+            style={{ width: '100%', fontSize: 11, padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: '#f87171' }}
           >
-            <Wifi size={13} color="var(--primary-light)" />
-            <span>Server IP Config</span>
+            <LogOut size={13} color="#f87171" />
+            <span>Sign Out</span>
           </button>
           <div>FSM v1.0 &nbsp;·&nbsp; © {new Date().getFullYear()}</div>
         </div>

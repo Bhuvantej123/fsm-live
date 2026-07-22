@@ -5,6 +5,7 @@ import {
   Building2, ClipboardList, CheckCircle, Clock, AlertCircle, Edit2
 } from 'lucide-react'
 import { api } from '../api'
+import { useAuth } from '../context/AuthContext'
 import VisitCard  from '../components/VisitCard'
 import Modal      from '../components/Modal'
 import VisitForm  from '../components/VisitForm'
@@ -24,6 +25,7 @@ export default function CustomerDetailPage() {
   const [showForm, setShowForm] = useState(false)
   const [editing,  setEditing]  = useState(null)
   const { confirm, dialog: confirmDialog } = useConfirm()
+  const { isAdmin } = useAuth()
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -158,8 +160,8 @@ export default function CustomerDetailPage() {
         filtered.map(v => (
           <VisitCard
             key={v.id} visit={v}
-            onEdit={v2 => { setEditing(v2); setShowForm(true) }}
-            onDelete={remove}
+            onEdit={isAdmin ? (v2 => { setEditing(v2); setShowForm(true) }) : null}
+            onDelete={isAdmin ? remove : null}
           />
         ))
       )}

@@ -4,6 +4,7 @@ const multer  = require('multer');
 const path    = require('path');
 const fs      = require('fs');
 const db      = require('../db');
+const { authenticate, requireAdmin } = require('../middleware/auth');
 
 // Helper to sanitize visit_date to YYYY-MM-DD with NO time component
 function formatDateOnly(d) {
@@ -116,7 +117,7 @@ router.get('/:id', (req, res) => {
 });
 
 // ── POST create visit ─────────────────────────────────────────────────────────
-router.post('/', upload.array('attachments', 10), (req, res) => {
+router.post('/', authenticate, upload.array('attachments', 10), (req, res) => {
   try {
     const { customer_id, engineer_id, visit_date, problem, actions_taken, remarks, status } = req.body;
     if (!customer_id || !visit_date)
@@ -145,7 +146,7 @@ router.post('/', upload.array('attachments', 10), (req, res) => {
 });
 
 // ── PUT update visit ──────────────────────────────────────────────────────────
-router.put('/:id', upload.array('attachments', 10), (req, res) => {
+router.put('/:id', authenticate, requireAdmin, upload.array('attachments', 10), (req, res) => {
   try {
     const existing = db.prepare('SELECT * FROM visits WHERE id = ?').get(req.params.id);
     if (!existing) return res.status(404).json({ error: 'Not found' });
@@ -180,7 +181,7 @@ router.put('/:id', upload.array('attachments', 10), (req, res) => {
 });
 
 // ── DELETE visit ──────────────────────────────────────────────────────────────
-router.delete('/:id', (req, res) => {
+router.delete('/:id', authenticate, requireAdmin, (req, res) => {
   try {
     const visit = db.prepare('SELECT * FROM visits WHERE id = ?').get(req.params.id);
     if (!visit) return res.status(404).json({ error: 'Not found' });
@@ -200,7 +201,7 @@ router.delete('/:id', (req, res) => {
 });
 
 // ── DELETE attachment ─────────────────────────────────────────────────────────
-router.delete('/:visitId/attachments/:attId', (req, res) => {
+router.delete('/:visitId/attachments/:attId', authenticate, requireAdmin, (req, res) => {
   try {
     const att = db.prepare(
       'SELECT * FROM attachments WHERE id = ? AND visit_id = ?'

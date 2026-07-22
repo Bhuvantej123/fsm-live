@@ -39,12 +39,14 @@ export const uploadsUrl = isCapacitor ? `${getServerUrl()}/uploads` : '/uploads'
 async function req(path, options = {}) {
   const isForm = options.body instanceof FormData;
   const baseUrl = getApiBase();
+  const token = localStorage.getItem('fsm_auth_token');
   const res = await fetch(`${baseUrl}${path}`, {
     ...options,
     headers: {
       'Bypass-Tunnel-Reminder': 'true',
       'bypass-tunnel-reminder': 'true',
       ...(isForm ? {} : { 'Content-Type': 'application/json' }),
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       ...options.headers,
     },
   });
@@ -84,4 +86,10 @@ export const api = {
   getReport:       month => req(`/reports/monthly?month=${month}`),
   reportPdfUrl:    month => `${getApiBase()}/reports/monthly/pdf?month=${month}&_t=${Date.now()}`,
   reportExcelUrl:  month => `${getApiBase()}/reports/monthly/excel?month=${month}&_t=${Date.now()}`,
+
+  // Auth / Users
+  getUsers:        ()       => req('/auth/users'),
+  createUser:      data     => req('/auth/users', { method: 'POST', body: JSON.stringify(data) }),
+  updateUser:      (id, d)  => req(`/auth/users/${id}`, { method: 'PUT', body: JSON.stringify(d) }),
+  deleteUser:      id       => req(`/auth/users/${id}`, { method: 'DELETE' }),
 }

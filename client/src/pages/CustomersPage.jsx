@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Search, Edit2, Trash2, Eye, Users, Building2 } from 'lucide-react'
 import { api } from '../api'
+import { useAuth } from '../context/AuthContext'
 import Modal from '../components/Modal'
 import { useConfirm } from '../components/ConfirmDialog'
 
@@ -20,6 +21,7 @@ export default function CustomersPage() {
   const [err,       setErr]       = useState('')
   const nav = useNavigate()
   const { confirm, dialog: confirmDialog } = useConfirm()
+  const { isAdmin } = useAuth()
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -64,9 +66,11 @@ export default function CustomersPage() {
           <h1 className="page-title">Customers</h1>
           <p className="page-subtitle">{customers.length} customer{customers.length !== 1 ? 's' : ''}</p>
         </div>
-        <button id="btn-add-customer" className="btn btn-primary" onClick={openAdd}>
-          <Plus size={16} /> Add Customer
-        </button>
+        {isAdmin && (
+          <button id="btn-add-customer" className="btn btn-primary" onClick={openAdd}>
+            <Plus size={16} /> Add Customer
+          </button>
+        )}
       </div>
 
       {/* Search */}
@@ -144,12 +148,16 @@ export default function CustomersPage() {
                             <button className="btn btn-icon btn-sm" title="View" onClick={() => nav(`/customers/${c.id}`)}>
                               <Eye size={13} />
                             </button>
-                            <button className="btn btn-icon btn-sm" title="Edit" onClick={() => openEdit(c)}>
-                              <Edit2 size={13} />
-                            </button>
-                            <button className="btn btn-danger btn-sm" title="Delete" onClick={() => remove(c.id)}>
-                              <Trash2 size={13} />
-                            </button>
+                            {isAdmin && (
+                              <button className="btn btn-icon btn-sm" title="Edit" onClick={() => openEdit(c)}>
+                                <Edit2 size={13} />
+                              </button>
+                            )}
+                            {isAdmin && (
+                              <button className="btn btn-danger btn-sm" title="Delete" onClick={() => remove(c.id)}>
+                                <Trash2 size={13} />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -204,12 +212,16 @@ export default function CustomersPage() {
                     <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={() => nav(`/customers/${c.id}`)}>
                       <Eye size={12} /> View Detail
                     </button>
-                    <button className="btn btn-icon btn-sm" onClick={() => openEdit(c)}>
-                      <Edit2 size={12} />
-                    </button>
-                    <button className="btn btn-danger btn-sm" onClick={() => remove(c.id)}>
-                      <Trash2 size={12} />
-                    </button>
+                    {isAdmin && (
+                      <button className="btn btn-icon btn-sm" onClick={() => openEdit(c)}>
+                        <Edit2 size={12} />
+                      </button>
+                    )}
+                    {isAdmin && (
+                      <button className="btn btn-danger btn-sm" onClick={() => remove(c.id)}>
+                        <Trash2 size={12} />
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}

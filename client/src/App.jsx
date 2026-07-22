@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
+import { AuthProvider, useAuth } from './context/AuthContext'
 import Sidebar from './components/Sidebar'
 import Navbar  from './components/Navbar'
+import LoginPage          from './pages/LoginPage'
 import DashboardPage      from './pages/DashboardPage'
 import CustomersPage      from './pages/CustomersPage'
 import CustomerDetailPage from './pages/CustomerDetailPage'
@@ -10,7 +12,49 @@ import EngineersPage      from './pages/EngineersPage'
 import ReportsPage        from './pages/ReportsPage'
 import AnalyticsPage      from './pages/AnalyticsPage'
 
-export default function App() {
+function AppShell() {
+  const { user, isAdmin } = useAuth()
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  // If not logged in, show login page
+  if (!user) {
+    return <LoginPage />
+  }
+
+  // Engineers cannot access these pages — redirect them
+  const engineerForbidden = ['/customers', '/engineers', '/reports']
+  const isForbidden = engineerForbidden.some(p => location.pathname.startsWith(p))
+  if (!isAdmin && isForbidden) {
+    return <Navigate to="/dashboard" replace />
+  }
+
+  return (
+    <div className="app-layout">
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Navbar onMenuClick={() => setSidebarOpen(open => !open)} />
+      <main className="main-content">
+        <div className="page-wrap">
+          <Routes>
+            <Route path="/"               element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard"      element={<DashboardPage />} />
+            <Route path="/visits"         element={<VisitsPage />} />
+            <Route path="/analytics"      element={<AnalyticsPage />} />
+            {/* Admin-only routes */}
+            {isAdmin && <Route path="/customers"      element={<CustomersPage />} />}
+            {isAdmin && <Route path="/customers/:id"  element={<CustomerDetailPage />} />}
+            {isAdmin && <Route path="/engineers"      element={<EngineersPage />} />}
+            {isAdmin && <Route path="/reports"        element={<ReportsPage />} />}
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </div>
+      </main>
+    </div>
+  )
+}
+
+function CapacitorSetup() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
@@ -48,24 +92,14 @@ export default function App() {
     }
   }, [sidebarOpen, location, navigate])
 
+  return null
+}
+
+export default function App() {
   return (
-    <div className="app-layout">
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <Navbar onMenuClick={() => setSidebarOpen(open => !open)} />
-      <main className="main-content">
-        <div className="page-wrap">
-          <Routes>
-            <Route path="/"               element={<Navigate to="/dashboard" replace />} />
-            <Route path="/dashboard"      element={<DashboardPage />} />
-            <Route path="/customers"      element={<CustomersPage />} />
-            <Route path="/customers/:id"  element={<CustomerDetailPage />} />
-            <Route path="/visits"         element={<VisitsPage />} />
-            <Route path="/engineers"      element={<EngineersPage />} />
-            <Route path="/reports"        element={<ReportsPage />} />
-            <Route path="/analytics"      element={<AnalyticsPage />} />
-          </Routes>
-        </div>
-      </main>
-    </div>
+    <AuthProvider>
+      <CapacitorSetup />
+      <AppShell />
+    </AuthProvider>
   )
 }
