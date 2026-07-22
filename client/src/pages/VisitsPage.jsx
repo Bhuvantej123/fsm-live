@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Plus, Search, Trash2, Eye, Filter, ClipboardList } from 'lucide-react'
+import { Plus, Search, Trash2, Eye, Filter, ClipboardList, ChevronDown, ChevronUp } from 'lucide-react'
 import { api } from '../api'
 import { useAuth } from '../context/AuthContext'
 import StatusBadge from '../components/StatusBadge'
@@ -19,12 +19,15 @@ export default function VisitsPage() {
   const [filters,   setFilters]   = useState({
     status: initialStatus, start_date: '', end_date: '', search: '', engineer_id: '', customer_id: ''
   })
-  const [loading,  setLoading]  = useState(true)
-  const [showForm, setShowForm] = useState(false)
-  const [editing,  setEditing]  = useState(null)
+  const [loading,    setLoading]    = useState(true)
+  const [showForm,   setShowForm]   = useState(false)
+  const [editing,    setEditing]    = useState(null)
+  const [expandedId, setExpandedId] = useState(null)
   const nav = useNavigate()
   const { confirm, dialog: confirmDialog } = useConfirm()
   const { isAdmin } = useAuth()
+
+  const toggleExpand = (id) => setExpandedId(prev => prev === id ? null : id)
 
   const activeFilterCount = [filters.status, filters.engineer_id, filters.customer_id, filters.start_date, filters.end_date].filter(Boolean).length
 
@@ -180,50 +183,92 @@ export default function VisitsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {visits.map(v => (
-                      <tr key={v.id}>
-                        <td style={{ whiteSpace: 'nowrap', color: 'var(--text-sec)' }}>{v.visit_date}</td>
-                        <td>
-                          <span
-                            style={{ color: 'var(--primary-light)', cursor: 'pointer', fontWeight: 500 }}
-                            onClick={() => nav(`/customers/${v.customer_id}`)}
+                    {visits.map(v => {
+                      const isExpanded = expandedId === v.id
+                      return (
+                        <>
+                          <tr
+                            key={v.id}
+                            onClick={() => toggleExpand(v.id)}
+                            style={{ cursor: 'pointer', background: isExpanded ? 'rgba(99,102,241,0.06)' : undefined }}
                           >
-                            {v.customer_name}
-                          </span>
-                        </td>
-                        <td style={{ color: v.engineer_name ? 'var(--text)' : 'var(--text-muted)' }}>
-                          {v.engineer_name || '—'}
-                        </td>
-                        <td style={{ maxWidth: 220 }}>
-                          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13, color: 'var(--text-sec)' }}>
-                            {v.problem || '—'}
-                          </div>
-                        </td>
-                        <td style={{ maxWidth: 220 }}>
-                          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13, color: 'var(--text-muted)' }}>
-                            {v.actions_taken || '—'}
-                          </div>
-                        </td>
-                        <td><StatusBadge status={v.status} /></td>
-                        <td>
-                          <div style={{ display: 'flex', gap: 6 }}>
-                            <button className="btn btn-icon btn-sm" title="View Customer" onClick={() => nav(`/customers/${v.customer_id}`)}>
-                              <Eye size={13} />
-                            </button>
-                            {isAdmin && (
-                              <button className="btn btn-ghost btn-sm" title="Edit" onClick={() => openEdit(v)}>
-                                Edit
-                              </button>
-                            )}
-                            {isAdmin && (
-                              <button className="btn btn-danger btn-sm" title="Delete" onClick={() => remove(v.id)}>
-                                <Trash2 size={13} />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                            <td style={{ whiteSpace: 'nowrap', color: 'var(--text-sec)' }}>{v.visit_date}</td>
+                            <td>
+                              <span
+                                style={{ color: 'var(--primary-light)', cursor: 'pointer', fontWeight: 500 }}
+                                onClick={e => { e.stopPropagation(); nav(`/customers/${v.customer_id}`) }}
+                              >
+                                {v.customer_name}
+                              </span>
+                            </td>
+                            <td style={{ color: v.engineer_name ? 'var(--text)' : 'var(--text-muted)' }}>
+                              {v.engineer_name || '—'}
+                            </td>
+                            <td style={{ maxWidth: 200 }}>
+                              <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13, color: 'var(--text-sec)' }}>
+                                {v.problem || '—'}
+                              </div>
+                            </td>
+                            <td style={{ maxWidth: 200 }}>
+                              <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13, color: 'var(--text-muted)' }}>
+                                {v.actions_taken || '—'}
+                              </div>
+                            </td>
+                            <td><StatusBadge status={v.status} /></td>
+                            <td>
+                              <div style={{ display: 'flex', gap: 6 }} onClick={e => e.stopPropagation()}>
+                                <button className="btn btn-icon btn-sm" title="View Customer" onClick={() => nav(`/customers/${v.customer_id}`)}>
+                                  <Eye size={13} />
+                                </button>
+                                {isAdmin && (
+                                  <button className="btn btn-ghost btn-sm" title="Edit" onClick={() => openEdit(v)}>
+                                    Edit
+                                  </button>
+                                )}
+                                {isAdmin && (
+                                  <button className="btn btn-danger btn-sm" title="Delete" onClick={() => remove(v.id)}>
+                                    <Trash2 size={13} />
+                                  </button>
+                                )}
+                                {isExpanded
+                                  ? <ChevronUp size={14} color="var(--text-muted)" />
+                                  : <ChevronDown size={14} color="var(--text-muted)" />
+                                }
+                              </div>
+                            </td>
+                          </tr>
+                          {isExpanded && (
+                            <tr key={`${v.id}-detail`} style={{ background: 'rgba(99,102,241,0.04)' }}>
+                              <td colSpan={7} style={{ padding: '14px 20px 18px', borderTop: '1px solid var(--border)' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+                                  {v.problem && (
+                                    <div>
+                                      <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 6, letterSpacing: '.06em' }}>Problem / Issue</div>
+                                      <div style={{ fontSize: 13.5, color: 'var(--text)', lineHeight: 1.6 }}>{v.problem}</div>
+                                    </div>
+                                  )}
+                                  {v.actions_taken && (
+                                    <div>
+                                      <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 6, letterSpacing: '.06em' }}>Actions Taken</div>
+                                      <div style={{ fontSize: 13.5, color: 'var(--text)', lineHeight: 1.6 }}>{v.actions_taken}</div>
+                                    </div>
+                                  )}
+                                  {v.remarks && (
+                                    <div>
+                                      <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 6, letterSpacing: '.06em' }}>Remarks</div>
+                                      <div style={{ fontSize: 13.5, color: 'var(--text-sec)', lineHeight: 1.6 }}>{v.remarks}</div>
+                                    </div>
+                                  )}
+                                  {!v.problem && !v.actions_taken && !v.remarks && (
+                                    <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>No details recorded.</div>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -231,62 +276,80 @@ export default function VisitsPage() {
 
             {/* Mobile Card List View */}
             <div className="mobile-only-view" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {visits.map(v => (
-                <div className="card" key={v.id} style={{ padding: '16px 18px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-sec)' }}>{v.visit_date}</span>
-                    <StatusBadge status={v.status} />
-                  </div>
+              {visits.map(v => {
+                const isExpanded = expandedId === v.id
+                return (
+                  <div className="card" key={v.id} style={{ padding: '16px 18px', border: isExpanded ? '1px solid rgba(99,102,241,.3)' : undefined }}>
 
-                  <div style={{ marginBottom: 10 }}>
-                    <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, marginBottom: 2 }}>Customer</div>
+                    {/* Tappable header */}
                     <div
-                      style={{ fontSize: 14, color: 'var(--primary-light)', fontWeight: 600, cursor: 'pointer' }}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, cursor: 'pointer' }}
+                      onClick={() => toggleExpand(v.id)}
+                    >
+                      <div>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-sec)' }}>{v.visit_date}</span>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{v.engineer_name || 'Unassigned'}</div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <StatusBadge status={v.status} />
+                        {isExpanded ? <ChevronUp size={16} color="var(--text-muted)" /> : <ChevronDown size={16} color="var(--text-muted)" />}
+                      </div>
+                    </div>
+
+                    {/* Customer name */}
+                    <div
+                      style={{ fontSize: 14, color: 'var(--primary-light)', fontWeight: 600, cursor: 'pointer', marginBottom: isExpanded ? 14 : 0 }}
                       onClick={() => nav(`/customers/${v.customer_id}`)}
                     >
                       {v.customer_name}
                     </div>
-                  </div>
 
-                  <div className="grid-2-col" style={{ marginBottom: 12 }}>
-                    <div>
-                      <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, marginBottom: 2 }}>Engineer</div>
-                      <div style={{ fontSize: 13, color: 'var(--text-sec)' }}>{v.engineer_name || 'Unassigned'}</div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, marginBottom: 2 }}>Problem</div>
-                      <div style={{ fontSize: 13, color: 'var(--text-sec)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {v.problem || '—'}
+                    {/* Expanded detail */}
+                    {isExpanded && (
+                      <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 12, animation: 'fadeIn 0.15s ease' }}>
+                        {v.problem && (
+                          <div>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 5, letterSpacing: '.06em' }}>Problem / Issue</div>
+                            <div style={{ fontSize: 13.5, color: 'var(--text)', lineHeight: 1.65 }}>{v.problem}</div>
+                          </div>
+                        )}
+                        {v.actions_taken && (
+                          <div style={{ padding: '10px 12px', background: 'rgba(99,102,241,0.07)', borderRadius: 'var(--r-sm)', borderLeft: '3px solid var(--primary)' }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--primary-light)', textTransform: 'uppercase', marginBottom: 5, letterSpacing: '.06em' }}>Actions Taken</div>
+                            <div style={{ fontSize: 13.5, color: 'var(--text)', lineHeight: 1.65 }}>{v.actions_taken}</div>
+                          </div>
+                        )}
+                        {v.remarks && (
+                          <div>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 5, letterSpacing: '.06em' }}>Remarks</div>
+                            <div style={{ fontSize: 13, color: 'var(--text-sec)', lineHeight: 1.65 }}>{v.remarks}</div>
+                          </div>
+                        )}
+                        {!v.problem && !v.actions_taken && !v.remarks && (
+                          <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>No details recorded.</div>
+                        )}
+
+                        {/* Action buttons */}
+                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', borderTop: '1px solid var(--border)', paddingTop: 12, marginTop: 4 }}>
+                          <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={() => nav(`/customers/${v.customer_id}`)}>
+                            <Eye size={12} /> View Customer
+                          </button>
+                          {isAdmin && (
+                            <button className="btn btn-ghost btn-sm" onClick={() => openEdit(v)}>
+                              Edit
+                            </button>
+                          )}
+                          {isAdmin && (
+                            <button className="btn btn-danger btn-sm" onClick={() => remove(v.id)}>
+                              <Trash2 size={12} />
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </div>
-
-                  {v.actions_taken && (
-                    <div style={{ marginBottom: 12, padding: '8px 10px', background: 'rgba(255,255,255,0.015)', borderRadius: 'var(--r-sm)' }}>
-                      <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, marginBottom: 2 }}>Actions Taken</div>
-                      <div style={{ fontSize: 13, color: 'var(--text-sec)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {v.actions_taken}
-                      </div>
-                    </div>
-                  )}
-
-                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', borderTop: '1px solid var(--border)', paddingTop: 12 }}>
-                    <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={() => nav(`/customers/${v.customer_id}`)}>
-                      <Eye size={12} /> View Customer
-                    </button>
-                    {isAdmin && (
-                      <button className="btn btn-ghost btn-sm" onClick={() => openEdit(v)}>
-                        Edit
-                      </button>
-                    )}
-                    {isAdmin && (
-                      <button className="btn btn-danger btn-sm" onClick={() => remove(v.id)}>
-                        <Trash2 size={12} />
-                      </button>
                     )}
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </>
         )}
