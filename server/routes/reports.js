@@ -32,15 +32,19 @@ function getMonthData(month) {
   const isPg = Boolean(process.env.DATABASE_URL);
 
   const customerQuery = isPg ? `
-    SELECT DISTINCT c.* FROM customers c
+    SELECT c.id, c.name, c.contact_person, c.phone, c.email, c.address, c.contract_type, c.notes, c.created_at, MIN(v.visit_date) as earliest_visit
+    FROM customers c
     JOIN visits v ON c.id = v.customer_id
     WHERE v.visit_date::text >= ? AND v.visit_date::text <= ?
-    ORDER BY c.name
+    GROUP BY c.id, c.name, c.contact_person, c.phone, c.email, c.address, c.contract_type, c.notes, c.created_at
+    ORDER BY earliest_visit ASC
   ` : `
-    SELECT DISTINCT c.* FROM customers c
+    SELECT c.id, c.name, c.contact_person, c.phone, c.email, c.address, c.contract_type, c.notes, c.created_at, MIN(v.visit_date) as earliest_visit
+    FROM customers c
     JOIN visits v ON c.id = v.customer_id
     WHERE v.visit_date >= ? AND v.visit_date <= ?
-    ORDER BY c.name
+    GROUP BY c.id
+    ORDER BY earliest_visit ASC
   `;
 
   const customers = db.prepare(customerQuery).all(start, end);
